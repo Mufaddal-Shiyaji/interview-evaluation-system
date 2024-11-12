@@ -18,14 +18,14 @@ const Login = () => {
       const data = { username, password };
 
       const response = await axios.post(endpoint, data);
-      localStorage.setItem("interviewerUsername", response.data.username);
-      localStorage.setItem("token", response.data.token);
+
       alert("Login successful");
       if (role == "interviewer") {
+        localStorage.setItem("interviewerUsername", response.data.username);
         navigate("/tests");
       } else {
-        //rewrite
-        navigate("/");
+        localStorage.setItem("intervieweeUsername", response.data.username);
+        navigate("/tests/interviewee");
       }
       // Navigate to dashboard or home
     } catch (err) {

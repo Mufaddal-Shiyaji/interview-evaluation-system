@@ -51,9 +51,14 @@ const TestViewResult = () => {
             <span>{result.username}: </span>
             {result.completed ? (
               <a
-                href={result.resultPDF}
+                href={`http://localhost:5000/reports/Interview_${result.interviewId}.pdf`}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="noreferrer"
+                style={{
+                  color: "blue",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                }} // Optional styling to emphasize it's clickable
               >
                 View Result PDF
               </a>

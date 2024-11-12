@@ -82,7 +82,7 @@ const intervieweeLogin = async (req, res) => {
     const token = jwt.sign({ username, role: "interviewee" }, JWT_SECRET, {
       expiresIn: "1h",
     });
-    res.json({ token });
+    res.json({ message: "Login successful", username: user.username, token });
   } else {
     res.status(401).send("Invalid credentials");
   }

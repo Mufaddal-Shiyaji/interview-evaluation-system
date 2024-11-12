@@ -132,8 +132,7 @@ const getTestResults = async (req, res) => {
         return {
           username: student.username,
           completed: interview ? interview.completed : false,
-          resultPDF:
-            interview && interview.completed ? interview.resultPDF : null,
+          interviewId: interview && interview.completed ? interview._id : null,
         };
       })
     );
@@ -145,4 +144,57 @@ const getTestResults = async (req, res) => {
   }
 };
 
-export { getTestResults, cancelTest, createTest, getAllTestsForInterviewer };
+const getAllTestsForInterviewee = async (req, res) => {
+  try {
+    const intervieweeUsername = req.params.intervieweeUsername;
+
+    // Find the interviewee by username
+    const interviewee = await User.findOne({
+      username: intervieweeUsername,
+      role: "interviewee",
+    });
+    if (!interviewee)
+      return res.status(404).json({ message: "Interviewee not found" });
+
+    // Get all tests for this interviewee
+    const tests = await Test.find({ studentUsernames: intervieweeUsername });
+
+    // Check completion status of each test
+    const testStatuses = await Promise.all(
+      tests.map(async (test) => {
+        const interview = await Interview.findOne({
+          testId: test._id,
+          intervieweeId: interviewee._id,
+        });
+        return {
+          test,
+          completed: !!interview?.completed,
+          resultPDF: interview?.resultPDF || null,
+        };
+      })
+    );
+
+    res.json({ testStatuses });
+  } catch (error) {
+    res.status(500).json({ message: "Error retrieving tests", error });
+  }
+};
+
+const getTest = async (req, res) => {
+  try {
+    const test = await Test.findById(req.params.testId);
+    if (!test) return res.status(404).json({ message: "Test not found" });
+    res.status(200).json(test);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+
+export {
+  getAllTestsForInterviewee,
+  getTestResults,
+  cancelTest,
+  createTest,
+  getAllTestsForInterviewer,
+  getTest,
+};
