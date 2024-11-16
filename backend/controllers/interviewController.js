@@ -1,13 +1,11 @@
 import Test from "../models/Test.js";
 import User from "../models/User.js";
 import Interview from "../models/Interview.js";
-import axios from "axios";
-import fetch from "node-fetch";
 import { OpenAI } from "openai";
-
 import path from "path";
 import PDFDocument from "pdfkit";
 import fs from "fs";
+import axios from "axios";
 
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
@@ -87,37 +85,48 @@ const getInterview = async (req, res) => {
   }
 };
 
+// Initialize conversation history with the initial system message only once
 let conversationHistory = [
-  // Optionally, you can add the initial question as a system message here
-  // { role: "system", content: `The interview is based on the following question: "${initialQuestion}"` }
+  {
+    role: "user",
+    content:
+      "You are a virtual interviewer. Engage the interviewee in a professional tone.",
+  },
 ];
 
 const addQuestionToConversationHistory = async (req, res) => {
   const { question } = req.body;
-  conversationHistory.push({
-    role: "user",
-    content: `You are a virtual interviewer. Engage the interviewee in a professional tone and ask relevant questions based on the candidate's responses. this is the question based on which the interview will revolve around: ${question}. All your response should be completed in less than 100 tokens`,
-  });
 
-  conversationHistory.push({
-    role: "assistant",
-    content: `Hey! Can you explain your approach to solving the given question?`,
-  });
+  // Check if the assistant's initial question is already in conversationHistory
+  if (
+    !conversationHistory.some(
+      (msg) =>
+        msg.role === "assistant" &&
+        msg.content.includes(
+          "Hey! Can you explain your approach to solving the question"
+        )
+    )
+  ) {
+    conversationHistory.push({
+      role: "assistant",
+      content: `Hey! Can you explain your approach to solving the question: "${question}"?`,
+    });
+  }
+
   res.status(200).json({ message: "Question added to conversation history." });
 };
-
 const sendMessage = async (req, res) => {
-  const { message, question } = req.body;
-
+  const { message } = req.body;
+  console.log(conversationHistory);
   try {
     const client = new OpenAI({
       baseURL: "https://api-inference.huggingface.co/v1/",
       apiKey: process.env.HUGGING_FACE_API_KEY,
     });
 
-    // Add the user's latest message to the conversation history
-
+    // Add user's message to conversation history
     conversationHistory.push({ role: "user", content: message });
+
     const response = await client.chat.completions.create({
       model: "mistralai/Mixtral-8x7B-Instruct-v0.1",
       messages: conversationHistory,
@@ -125,11 +134,10 @@ const sendMessage = async (req, res) => {
       max_tokens: 300,
     });
 
-    // Extract the AI's response and add it to the conversation history
+    // Get AI's response and ensure alternation by adding as assistant
     const aiResponse = response.choices[0].message.content;
     conversationHistory.push({ role: "assistant", content: aiResponse });
 
-    // Send the AI's response back to the client
     res.json({ message: aiResponse });
   } catch (error) {
     console.error("Error communicating with the AI model:", error);
@@ -166,7 +174,13 @@ const submitInterview = async (req, res) => {
     });
 
     const report = response.choices[0].message.content;
-    conversationHistory = []; // Clear the conversation history
+    conversationHistory = [
+      {
+        role: "user",
+        content:
+          "You are a virtual interviewer. Engage the interviewee in a professional tone.",
+      },
+    ]; // Clear the conversation history
 
     // Fetch interview data and update status
     const interview = await Interview.findById(interviewId);
@@ -215,6 +229,52 @@ const submitInterview = async (req, res) => {
   }
 };
 
+const clearChat = async (req, res) => {
+  conversationHistory = [];
+  conversationHistory = [
+    {
+      role: "user",
+      content:
+        "You are a virtual interviewer. Engage the interviewee in a professional tone.",
+    },
+  ];
+  res.status(200).json({ message: "Chat history cleared." });
+};
+
+const verify = async (req, res) => {
+  const { username, image: imageBase64 } = req.body;
+
+  try {
+    // Retrieve user data
+    const user = await User.findOne({ username });
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+
+    const storedImageBase64 = user.image;
+    if (!storedImageBase64)
+      return res
+        .status(400)
+        .json({ success: false, message: "No stored image found" });
+
+    // Call the Flask backend to compare the images
+    const response = await axios.post("http://localhost:4000/verifyFaceMatch", {
+      storedImage: storedImageBase64,
+      currentImage: imageBase64,
+    });
+
+    if (response.data.match) {
+      res.json({ success: true, verified: true });
+    } else {
+      res.json({ success: false, verified: false });
+    }
+  } catch (error) {
+    console.error("Error in verification:", error);
+    res.status(500).json({ success: false, message: "Verification failed" });
+  }
+};
+
 export {
   addQuestionToConversationHistory,
   sendMessage,
@@ -222,4 +282,6 @@ export {
   createInterview,
   getInterview,
   submitInterview,
+  verify,
+  clearChat,
 };

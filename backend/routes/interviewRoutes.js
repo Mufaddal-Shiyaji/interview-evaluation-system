@@ -7,6 +7,8 @@ import {
   sendMessage,
   addQuestionToConversationHistory,
   submitInterview,
+  verify,
+  clearChat,
 } from "../controllers/interviewController.js";
 const router = express.Router();
 
@@ -19,4 +21,6 @@ router.post(
   addQuestionToConversationHistory
 );
 router.post("/submitInterview", submitInterview);
+router.post("/verify", verify);
+router.get("/clearChat", clearChat);
 export default router;

@@ -11,6 +11,7 @@ const SystemCheck = () => {
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [videoStream, setVideoStream] = useState(null);
+  const [verificationSuccess, setVerificationSuccess] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -77,11 +78,12 @@ const SystemCheck = () => {
     drawWaveform();
   };
 
-  // Enable the submit button only when permissions and terms are accepted
+  // Handle terms checkbox change
   const handleTermsCheckbox = () => {
     setTermsAccepted(!termsAccepted);
   };
 
+  // Handle submit button
   const handleSubmit = async () => {
     console.log("Submit clicked");
     console.log(testId, interviewerUsername, intervieweeUsername);
@@ -99,6 +101,39 @@ const SystemCheck = () => {
       navigate(`/interview/${interviewId}`);
     } catch (error) {
       alert("Error creating interview: " + error.message);
+    }
+  };
+
+  // Capture a photo and send it for verification
+  const handleVerifyYourself = async () => {
+    if (videoRef.current) {
+      const canvas = document.createElement("canvas");
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const context = canvas.getContext("2d");
+      context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      let imageBase64 = canvas.toDataURL("image/png");
+      imageBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, "");
+      try {
+        const response = await axios.post(
+          "http://localhost:5000/api/interviews/verify",
+          {
+            username: intervieweeUsername,
+            image: imageBase64,
+          }
+        );
+
+        if (response.data.verified) {
+          setVerificationSuccess(true);
+          alert("Verification successful");
+        } else {
+          alert(
+            "Verification failed: Please make sure you are the authorized user."
+          );
+        }
+      } catch (error) {
+        alert("Error verifying identity: " + error.message);
+      }
     }
   };
 
@@ -136,6 +171,11 @@ const SystemCheck = () => {
         <canvas ref={canvasRef} width={300} height={100}></canvas>
       </div>
 
+      {/* Verify Yourself Button */}
+      <button onClick={handleVerifyYourself} disabled={!permissionsGranted}>
+        Verify Yourself
+      </button>
+
       {/* Terms and Conditions Box */}
       <div className="terms-box">
         <p>
@@ -155,8 +195,7 @@ const SystemCheck = () => {
       {/* Submit Button */}
       <button
         onClick={handleSubmit}
-        //disabled={!permissionsGranted || !termsAccepted}
-        disabled={!(termsAccepted && permissionsGranted)}
+        disabled={!(termsAccepted && permissionsGranted && verificationSuccess)}
       >
         Start Interview
       </button>

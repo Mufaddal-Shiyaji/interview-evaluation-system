@@ -12,9 +12,33 @@ const InterviewPage = () => {
   const [newMessage, setNewMessage] = useState(""); // Message input state
   const [isWhiteboardExpanded, setIsWhiteboardExpanded] = useState(false);
   const [whiteboardContent, setWhiteboardContent] = useState("");
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [modalDisplayCount, setModalDisplayCount] = useState(0);
+  const [defaulterCount, setDefaulterCount] = useState(0); // Initialize the counter
+  const [modalMessage, setModalMessage] = useState("");
   const [code, setCode] = useState("");
   const videoRef = useRef(null);
   const exitButtonRef = useRef(null);
+  const canvasRef = useRef(null);
+
+  // Function to exit the interview
+  const exitInterview = () => {
+    alert(
+      "You have been removed from the interview due to multiple failed verifications."
+    );
+    handleExitInterview();
+  };
+
+  // Show custom modal
+  const showModal = (message) => {
+    setModalMessage(message);
+    setIsModalVisible(true);
+  };
+
+  // Hide custom modal
+  const hideModal = () => {
+    setIsModalVisible(false);
+  };
 
   // Clipboard Restriction
   useEffect(() => {
@@ -46,13 +70,14 @@ const InterviewPage = () => {
     await axios.post("http://localhost:5000/api/interviews/submitInterview", {
       interviewId,
     });
-    navigate("/interview-ended"); // Redirect to the interview-ended page
+    handleExitInterview(); // Redirect to the interview-ended page
   };
 
-  const handleExitInterview = () => {
+  const handleExitInterview = async () => {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(console.error);
     }
+    await axios.get("http://localhost:5000/api/interviews/clearChat");
     navigate("/interview-ended");
   };
 
@@ -137,14 +162,22 @@ const InterviewPage = () => {
             handleExitInterview();
             return 0;
           }
-          return prevTime - 1;
+          return prevTime - 3;
         });
-      }, 1000);
+        console.log("timeLeft");
+        captureAndVerifyScreenshot();
+      }, 3000);
 
       document.addEventListener("fullscreenchange", onFullscreenChange);
 
+      // Capture screenshot every 3 seconds
+      const captureInterval = setInterval(() => {
+        console.log("capturing screenshot...");
+      }, 3000);
+
       return () => {
         clearInterval(timer);
+        clearInterval(captureInterval);
         document.removeEventListener("fullscreenchange", onFullscreenChange);
       };
     }
@@ -152,6 +185,97 @@ const InterviewPage = () => {
 
   const toggleWhiteboard = () => {
     setIsWhiteboardExpanded((prev) => !prev);
+  };
+
+  const captureAndVerifyScreenshot = async () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext("2d");
+      context.drawImage(
+        videoRef.current,
+        0,
+        0,
+        canvasRef.current.width,
+        canvasRef.current.height
+      );
+
+      const imageBase64 = canvasRef.current.toDataURL("image/png");
+      const intervieweeUsername = localStorage.getItem("intervieweeUsername");
+
+      try {
+        const response = await axios.post(
+          "http://localhost:5000/api/interviews/verify",
+          {
+            username: intervieweeUsername,
+            image: imageBase64.replace(/^data:image\/[a-z]+;base64,/, ""),
+          }
+        );
+
+        if (!response.data.verified) {
+          setDefaulterCount((prevCount) => {
+            const newCount = prevCount + 1;
+            if (newCount >= 3) {
+              showModal(
+                "Verification failed: Please make sure you are the authorized user."
+              );
+              return 0; // Reset counter after showing the modal
+            }
+            return newCount;
+          });
+
+          // If modal has been displayed 4 times, exit the interview
+          setModalDisplayCount((prevModalCount) => {
+            const newModalCount = prevModalCount + 1;
+            if (newModalCount >= 12) {
+              exitInterview(); // Exit the interview after 4 modal displays
+              return 0; // Reset the counter after exiting
+            }
+            return newModalCount;
+          });
+        } else {
+          console.log("Verification passed");
+          setDefaulterCount(0); // Reset the counter on successful verification
+        }
+      } catch (error) {
+        console.error("Error verifying image:", error);
+      }
+    }
+  };
+
+  // Modal for verification failure
+  const Modal = () => {
+    if (!isModalVisible) return null;
+    return (
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 1000,
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: "white",
+            padding: "20px",
+            borderRadius: "10px",
+            maxWidth: "500px",
+            width: "100%",
+            textAlign: "center",
+          }}
+        >
+          <h3>{modalMessage}</h3>
+          <button onClick={hideModal} style={{ padding: "10px 20px" }}>
+            Close
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -254,6 +378,13 @@ const InterviewPage = () => {
             style={{ width: "80%", height: "80%", borderRadius: "2px" }}
             autoPlay
           ></video>
+          <canvas
+            ref={canvasRef}
+            style={{ display: "none" }}
+            width="640"
+            height="480"
+          />
+          <Modal />
         </div>
 
         <div

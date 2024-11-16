@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import axios from "axios";
+import Webcam from "react-webcam";
 import { useNavigate } from "react-router-dom";
 
 const Signup = () => {
@@ -7,9 +8,18 @@ const Signup = () => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [image, setImage] = useState("");
+  const [image, setImage] = useState(""); // For storing captured image
   const [company, setCompany] = useState("");
+  const [showCamera, setShowCamera] = useState(false); // Toggle camera view
+  const webcamRef = useRef(null);
   const navigate = useNavigate();
+
+  const handleCapture = () => {
+    const imageSrc = webcamRef.current.getScreenshot();
+    const base64Data = imageSrc.replace(/^data:image\/[a-z]+;base64,/, "");
+    setImage(base64Data); // Set captured image as base64
+    setShowCamera(false); // Close camera view
+  };
 
   const handleSignup = async () => {
     try {
@@ -80,12 +90,29 @@ const Signup = () => {
         onChange={(e) => setPassword(e.target.value)}
       />
       {role === "interviewee" && (
-        <input
-          type="text"
-          placeholder="Image URL"
-          value={image}
-          onChange={(e) => setImage(e.target.value)}
-        />
+        <>
+          <input
+            type="text"
+            placeholder="Image URL"
+            value={image}
+            onChange={(e) => setImage(e.target.value)}
+            disabled={showCamera} // Disable if camera is active
+          />
+          <button onClick={() => setShowCamera(!showCamera)}>
+            {showCamera ? "Close Camera" : "Capture Photo"}
+          </button>
+          {showCamera && (
+            <div>
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                width="20%"
+              />
+              <button onClick={handleCapture}>Take Photo</button>
+            </div>
+          )}
+        </>
       )}
       {role === "interviewer" && (
         <input
