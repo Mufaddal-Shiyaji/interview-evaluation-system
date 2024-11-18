@@ -91,11 +91,9 @@ const InterviewPage = () => {
     try {
       const response = await axios.post(
         "http://localhost:5000/api/interviews/sendMessage",
-        {
-          message: userMessage,
-          question,
-        }
+        { message: userMessage } // Removed question as it's already in context
       );
+
       const botMessage = response.data.message;
       setChatMessages((prevMessages) => [
         ...prevMessages,

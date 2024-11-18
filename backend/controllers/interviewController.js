@@ -6,10 +6,19 @@ import path from "path";
 import PDFDocument from "pdfkit";
 import fs from "fs";
 import axios from "axios";
-
+import { readFile } from "fs/promises";
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+import Groq from "groq-sdk";
+
+// Path to the prompt file
+const promptFilePath = path.resolve(__dirname, "prompts/system.txt");
+const promptContent = await readFile(promptFilePath, "utf8");
+
+const reportFilePath = path.resolve(__dirname, "prompts/report.txt");
+const reportContent = await readFile(reportFilePath, "utf8");
+
 // Function to generate a question based on test data
 const generateQuestion = async (req, res) => {
   const { subject, difficultyLevel, subTopic } = req.body;
@@ -21,20 +30,33 @@ const generateQuestion = async (req, res) => {
     });
 
     console.log("ssssppp");
-    const c =
-      "Normalization is a systematic process of organizing data within a database to minimize redundancy, ensure data integrity, and enhance efficiency. It involves breaking down large tables into smaller, more focused tables, establishing clear relationships between them. By adhering to specific normal forms, such as First Normal Form (1NF), Second Normal Form (2NF), Third Normal Form (3NF), Boyce-Codd Normal Form (BCNF), Fourth Normal Form (4NF), and Fifth Normal Form (5NF), database designers can eliminate anomalies like insertion, deletion, and update anomalies. 1NF ensures atomic values in each cell, 2NF eliminates partial dependencies of non-prime attributes on the primary key, 3NF removes transitive dependencies, BCNF strengthens 3NF by requiring every determinant to be a candidate key, 4NF addresses multi-valued dependencies, and 5NF handles join dependencies. Normalization offers numerous advantages, including reduced data redundancy, improved data consistency, enhanced query performance, and easier data maintenance. However, it can introduce complexity in database design and potentially increase storage requirements. In certain scenarios, denormalization, a controlled process of adding redundancy, may be necessary to optimize performance or simplify queries, but it should be applied judiciously to avoid compromising data integrity. Ultimately, normalization is a valuable tool for creating well-structured, efficient, and reliable databases. Based on this above answer by a candidate, can you give to the candidate scores on parameters of technicalSkill: { type: Number, min: 0, max: 10, default: 0 }, communication: { type: Number, min: 0, max: 10, default: 0 },problemSolving: { type: Number, min: 0, max: 10, default: 0 },codingEfficiency: { type: Number, min: 0, max: 10, default: 0 }, and an overall score for the candiate, give detail explanation of each score(basically make a report/marksheet for the candidate)";
-    const m = `Generate an interview-level detailed question on '${subject}' focusing on '${subTopic}' with a difficulty level of '${difficultyLevel}'. (Do not generate anything else just give the question of length minimum 300 characters) (give an example if necessary)`;
-    const response = await client.chat.completions.create({
-      model: "mistralai/Mixtral-8x7B-Instruct-v0.1",
+    const m = `Generate a detailed interview question on '${subject}' focusing on '${subTopic}' with a difficulty level of '${difficultyLevel}'. Provide only the question, with a minimum length of 300 characters. Do not include any explanations, context, or additional text.
+    Format of the generation given below:
+
+    ->
+    [Question]
+    `;
+
+    const groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
+
+    const response = await groq.chat.completions.create({
       messages: [
         {
           role: "user",
           content: m,
         },
       ],
-      min_tokens: 700,
-      max_tokens: 2200,
+      //model: "llama-3.2-90b-text-preview",
+      model: "llama3-70b-8192",
+      temperature: 0.86,
+      max_tokens: 1024,
+      top_p: 1,
+      stream: false,
+      stop: null,
     });
+
     res.json({ question: response.choices[0].message.content });
   } catch (error) {
     console.error("Error fetching question:", error);
@@ -58,7 +80,6 @@ const createInterview = async (req, res) => {
     if (!interviewee)
       return res.status(404).json({ message: "Interviewee not found" });
 
-    //console.log(interviewer._id, interviewee_.id);
     console.log(interviewer._id);
     const newInterview = new Interview({
       testId,
@@ -85,57 +106,48 @@ const getInterview = async (req, res) => {
   }
 };
 
-// Initialize conversation history with the initial system message only once
 let conversationHistory = [
   {
-    role: "user",
-    content:
-      "You are a virtual interviewer. Engage the interviewee in a professional tone.",
+    role: "system",
+    content: promptContent,
   },
 ];
 
 const addQuestionToConversationHistory = async (req, res) => {
   const { question } = req.body;
 
-  // Check if the assistant's initial question is already in conversationHistory
-  if (
-    !conversationHistory.some(
-      (msg) =>
-        msg.role === "assistant" &&
-        msg.content.includes(
-          "Hey! Can you explain your approach to solving the question"
-        )
-    )
-  ) {
-    conversationHistory.push({
-      role: "assistant",
-      content: `Hey! Can you explain your approach to solving the question: "${question}"?`,
-    });
-  }
+  let systemContent = conversationHistory[0].content;
+  systemContent += `From the next sentence, the main question will begin:  "${question}"`;
+  conversationHistory[0].content = systemContent;
 
   res.status(200).json({ message: "Question added to conversation history." });
 };
+
 const sendMessage = async (req, res) => {
   const { message } = req.body;
   console.log(conversationHistory);
+
   try {
-    const client = new OpenAI({
-      baseURL: "https://api-inference.huggingface.co/v1/",
-      apiKey: process.env.HUGGING_FACE_API_KEY,
-    });
-
-    // Add user's message to conversation history
+    // Add user's response to conversation history
     conversationHistory.push({ role: "user", content: message });
-
-    const response = await client.chat.completions.create({
-      model: "mistralai/Mixtral-8x7B-Instruct-v0.1",
-      messages: conversationHistory,
-      min_tokens: 30,
-      max_tokens: 300,
+    const groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
     });
 
-    // Get AI's response and ensure alternation by adding as assistant
+    const response = await groq.chat.completions.create({
+      messages: conversationHistory,
+      //model: "llama-3.2-90b-text-preview",
+      model: "llama3-70b-8192",
+      temperature: 0.86,
+      max_tokens: 500,
+      top_p: 1,
+      stream: false,
+      stop: null,
+    });
+
     const aiResponse = response.choices[0].message.content;
+
+    // Add AI's next question to the conversation history
     conversationHistory.push({ role: "assistant", content: aiResponse });
 
     res.json({ message: aiResponse });
@@ -149,36 +161,31 @@ const submitInterview = async (req, res) => {
   const { interviewId } = req.body;
 
   try {
-    const client = new OpenAI({
-      baseURL: "https://api-inference.huggingface.co/v1/",
-      apiKey: process.env.HUGGING_FACE_API_KEY,
-    });
-
     // Request the LLM to generate a report based on specified parameters
-    const reportPrompt = `
-      Based on this interview conversation history, evaluate the candidate's performance on the following parameters:
-      - Technical Skill: Rate out of 10
-      - Communication: Rate out of 10
-      - Problem Solving: Rate out of 10
-      - Coding Efficiency: Rate out of 10
-
-      Generate a detailed report with scores for each parameter, an overall score, and an explanation for each score.
-    `;
+    const reportPrompt = reportContent;
 
     conversationHistory.push({ role: "user", content: reportPrompt });
 
-    const response = await client.chat.completions.create({
-      model: "mistralai/Mixtral-8x7B-Instruct-v0.1", // Or the model you are using
+    const groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
+    const response = await groq.chat.completions.create({
       messages: conversationHistory,
-      max_tokens: 500,
+      //model: "llama-3.2-90b-text-preview",
+      model: "llama3-70b-8192",
+      temperature: 0.86,
+      max_tokens: 900,
+      top_p: 1,
+      stream: false,
+      stop: null,
     });
 
     const report = response.choices[0].message.content;
+    conversationHistory = [];
     conversationHistory = [
       {
-        role: "user",
-        content:
-          "You are a virtual interviewer. Engage the interviewee in a professional tone.",
+        role: "system",
+        content: promptContent,
       },
     ]; // Clear the conversation history
 
@@ -200,9 +207,10 @@ const submitInterview = async (req, res) => {
 
     // Design the PDF
     doc.fontSize(18).text("Interview Evaluation Report", { align: "center" });
-    doc.moveDown();
-    doc.fontSize(12).text("Report Summary:");
-    doc.moveDown().fontSize(10).text(report);
+
+    // Remove all '*' characters from the report
+    const sanitizedReport = report.replace(/\*/g, "");
+    doc.moveDown().fontSize(10).text(sanitizedReport);
 
     // Finalize the document
     doc.end();
@@ -233,9 +241,8 @@ const clearChat = async (req, res) => {
   conversationHistory = [];
   conversationHistory = [
     {
-      role: "user",
-      content:
-        "You are a virtual interviewer. Engage the interviewee in a professional tone.",
+      role: "system",
+      content: promptContent,
     },
   ];
   res.status(200).json({ message: "Chat history cleared." });
