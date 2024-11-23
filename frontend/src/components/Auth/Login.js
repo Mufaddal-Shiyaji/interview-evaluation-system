@@ -35,44 +35,117 @@ const Login = () => {
   };
 
   return (
-    <div className="login-container">
-      <h2>Log In</h2>
-      <div>
-        <label>
+    <div
+      className="login-container"
+      style={{
+        width: "40%",
+        margin: "50px auto",
+        padding: "20px",
+        backgroundColor: "#f8f9fa",
+        border: "1px solid #ddd",
+        borderRadius: "8px",
+        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      <h2
+        style={{
+          textAlign: "center",
+          marginBottom: "20px",
+          color: "#333",
+        }}
+      >
+        Log In
+      </h2>
+
+      {/* Role Selection */}
+      <div style={{ marginBottom: "20px", textAlign: "center" }}>
+        <label
+          style={{
+            display: "inline-block",
+            marginRight: "15px",
+            fontSize: "16px",
+            color: "#555",
+          }}
+        >
           <input
             type="radio"
             name="role"
             value="interviewee"
             checked={role === "interviewee"}
             onChange={() => setRole("interviewee")}
+            style={{ marginRight: "5px" }}
           />
           Interviewee
         </label>
-        <label>
+        <label
+          style={{
+            display: "inline-block",
+            fontSize: "16px",
+            color: "#555",
+          }}
+        >
           <input
             type="radio"
             name="role"
             value="interviewer"
             checked={role === "interviewer"}
             onChange={() => setRole("interviewer")}
+            style={{ marginRight: "5px" }}
           />
           Interviewer
         </label>
       </div>
 
+      {/* Username Input */}
       <input
         type="text"
         placeholder="Username"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
+        style={{
+          width: "100%",
+          padding: "10px",
+          fontSize: "14px",
+          marginBottom: "15px",
+          border: "1px solid #ccc",
+          borderRadius: "4px",
+        }}
       />
+
+      {/* Password Input */}
       <input
         type="password"
         placeholder="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
+        style={{
+          width: "100%",
+          padding: "10px",
+          fontSize: "14px",
+          marginBottom: "20px",
+          border: "1px solid #ccc",
+          borderRadius: "4px",
+        }}
       />
-      <button onClick={handleLogin}>Log In</button>
+
+      {/* Login Button */}
+      <button
+        onClick={handleLogin}
+        style={{
+          width: "100%",
+          padding: "12px",
+          fontSize: "16px",
+          fontWeight: "bold",
+          backgroundColor: "#007bff",
+          color: "#fff",
+          border: "none",
+          borderRadius: "4px",
+          cursor: "pointer",
+        }}
+      >
+        Log In
+      </button>
     </div>
   );
 };

@@ -21,16 +21,11 @@ const reportContent = await readFile(reportFilePath, "utf8");
 
 // Function to generate a question based on test data
 const generateQuestion = async (req, res) => {
-  const { subject, difficultyLevel, subTopic } = req.body;
+  const { role } = req.body;
 
   try {
-    const client = new OpenAI({
-      baseURL: "https://api-inference.huggingface.co/v1/",
-      apiKey: process.env.HUGGING_FACE_API_KEY,
-    });
-
     console.log("ssssppp");
-    const m = `Generate a detailed interview question on '${subject}' focusing on '${subTopic}' with a difficulty level of '${difficultyLevel}'. Provide only the question, with a minimum length of 300 characters. Do not include any explanations, context, or additional text.
+    const m = `Generate a detailed interview question on '${role}' role. Provide only the question, with a minimum length of 300 characters. Do not include any explanations, context, or additional text.
     Format of the generation given below:
 
     ->
@@ -117,15 +112,27 @@ const addQuestionToConversationHistory = async (req, res) => {
   const { question } = req.body;
 
   let systemContent = conversationHistory[0].content;
-  systemContent += `From the next sentence, the main question will begin:  "${question}"`;
+  systemContent += `"${question}"`;
   conversationHistory[0].content = systemContent;
 
   res.status(200).json({ message: "Question added to conversation history." });
 };
 
+const addAnotherQuestion = async (req, res) => {
+  const { question, role } = req.body;
+
+  const content = `New Role: ${role}. All the conversation regarding the previous question has been completed. Now only generate questions regarding the new role. Now, act as an interviewer using this next main question for ${role} role: "${question}"`;
+  conversationHistory.push({ role: "user", content });
+  conversationHistory.push({
+    role: "assistant",
+    content: "Can you explain your approach towards this question?",
+  });
+  res
+    .status(200)
+    .json({ message: "New Question added to conversation history." });
+};
 const sendMessage = async (req, res) => {
   const { message } = req.body;
-  console.log(conversationHistory);
 
   try {
     // Add user's response to conversation history
@@ -157,13 +164,41 @@ const sendMessage = async (req, res) => {
   }
 };
 
+const clearChat = async (req, res) => {
+  conversationHistory = [];
+  conversationHistory = [
+    {
+      role: "system",
+      content: promptContent,
+    },
+  ];
+  res.status(200).json({ message: "Chat history cleared." });
+};
+
 const submitInterview = async (req, res) => {
   const { interviewId } = req.body;
 
   try {
     // Request the LLM to generate a report based on specified parameters
-    const reportPrompt = reportContent;
 
+    const interview1 = await Interview.findById(interviewId);
+    if (!interview1) {
+      return res.status(404).json({ error: "Interview not found" });
+    }
+
+    // Step 2: Get the intervieweeUsername from the interview
+    const testId = interview1.testId;
+
+    // Step 3: Fetch the user using the intervieweeUsername
+    const test = await Test.findById(testId);
+    if (!test) {
+      return res.status(404).json({ error: "Test not found" });
+    }
+
+    const interviewType = test.interviewType;
+
+    const reportPrompt = interviewType + "   " + reportContent;
+    console.log(conversationHistory);
     conversationHistory.push({ role: "user", content: reportPrompt });
 
     const groq = new Groq({
@@ -237,17 +272,6 @@ const submitInterview = async (req, res) => {
   }
 };
 
-const clearChat = async (req, res) => {
-  conversationHistory = [];
-  conversationHistory = [
-    {
-      role: "system",
-      content: promptContent,
-    },
-  ];
-  res.status(200).json({ message: "Chat history cleared." });
-};
-
 const verify = async (req, res) => {
   const { username, image: imageBase64 } = req.body;
 
@@ -282,6 +306,43 @@ const verify = async (req, res) => {
   }
 };
 
+const generateQuestionsForRoles = async (req, res) => {
+  const { interviewType } = req.body; // "frontend,backend,analyst"
+  try {
+    const roles = interviewType.split(",").map((role) => role.trim());
+    const questions = [];
+
+    for (const interviewRole of roles) {
+      const prompt = `Generate a detailed interview question for the role of '${interviewRole}'. Provide a minimum of 300 characters. Do not include explanations or context.`;
+      const response = await openai.createCompletion({
+        model: "gpt-4",
+        prompt,
+        max_tokens: 300,
+      });
+      questions.push({
+        interviewRole,
+        question: response.data.choices[0].text.trim(),
+      });
+    }
+
+    res.status(200).json({ questions });
+  } catch (error) {
+    console.error("Error generating questions:", error);
+    res.status(500).json({ error: "Failed to generate questions." });
+  }
+};
+
+const resetConversationForRole = async (req, res) => {
+  const { role } = req.body;
+
+  // Clear frontend conversation while retaining the backend history
+  conversationHistory.push({
+    role: "user",
+    content: `Switching to role: ${role}`,
+  });
+  res.status(200).json({ message: "Conversation reset for the current role." });
+};
+
 export {
   addQuestionToConversationHistory,
   sendMessage,
@@ -291,4 +352,7 @@ export {
   submitInterview,
   verify,
   clearChat,
+  generateQuestionsForRoles,
+  resetConversationForRole,
+  addAnotherQuestion,
 };

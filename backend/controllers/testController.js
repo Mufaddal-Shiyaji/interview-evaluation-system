@@ -14,24 +14,18 @@ const getAllTestsForInterviewer = async (req, res) => {
 };
 
 const createTest = async (req, res) => {
-  const {
-    subject,
-    difficultyLevel,
-    subTopic,
-    time,
-    specificRequirements,
-    studentUsernames,
-  } = req.body;
+  const { interviewType, time, specificRequirements, studentUsernames } =
+    req.body;
 
   try {
-    // Find and verify that all specified student usernames exist and have the "interviewee" role
+    // Validate that all specified student usernames exist and have the "interviewee" role
     const students = await User.find({
       username: { $in: studentUsernames },
       role: "interviewee",
     });
 
     if (students.length !== studentUsernames.length) {
-      // Handle the case where some usernames were not found
+      // Identify missing usernames
       const foundUsernames = students.map((student) => student.username);
       const missingUsernames = studentUsernames.filter(
         (username) => !foundUsernames.includes(username)
@@ -43,12 +37,10 @@ const createTest = async (req, res) => {
       });
     }
 
-    // Create the new test if all students are valid
+    // Create a new test with the updated schema
     const newTest = new Test({
-      subject,
-      difficultyLevel,
-      subTopic,
-      time,
+      interviewType, // e.g., "frontend, backend, full stack"
+      time, // Time in minutes
       specificRequirements,
       studentUsernames,
       createdByUsername: req.params.interviewerUsername,

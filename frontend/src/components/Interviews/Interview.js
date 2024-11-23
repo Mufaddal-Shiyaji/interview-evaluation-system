@@ -20,6 +20,194 @@ const InterviewPage = () => {
   const videoRef = useRef(null);
   const exitButtonRef = useRef(null);
   const canvasRef = useRef(null);
+  const [questions, setQuestions] = useState([]);
+  const [currentRoleIndex, setCurrentRoleIndex] = useState(0);
+  const [interviewType, setInterviewType] = useState("");
+  const [mainTimer, setMainTimer] = useState("");
+  const [roles, setRoles] = useState([]);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [count, setCount] = useState(0);
+  // Initialize the component with interview details
+  useEffect(() => {
+    const fetchInterviewAndTestDetails = async () => {
+      try {
+        const interviewResponse = await axios.get(
+          `http://localhost:5000/api/interviews/get/${interviewId}`
+        );
+        const { testId } = interviewResponse.data;
+
+        const testResponse = await axios.get(
+          `http://localhost:5000/api/tests/getTest/${testId}`
+        );
+        const { time, interviewType } = testResponse.data;
+
+        const rolesArray = interviewType.split(",").map((role) => role.trim());
+        setRoles(rolesArray);
+        setMainTimer(time * 60); // Total time in seconds
+        setTimeLeft((time * 60) / rolesArray.length); // Divide time per role
+
+        await generateMainQuestion(rolesArray[0]);
+      } catch (error) {
+        console.error("Error fetching interview or test data:", error);
+        navigate("/interview-ended");
+      }
+    };
+
+    fetchInterviewAndTestDetails();
+  }, [interviewId]);
+
+  // Generate main question for the given role
+  let isRequestInProgress = false;
+
+  const generateMainQuestion = async (role) => {
+    if (isRequestInProgress) return;
+    isRequestInProgress = true;
+
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/interviews/generateQuestion",
+        { role }
+      );
+      setQuestion(response.data.question);
+
+      if (count > 0 || currentRoleIndex > 0) {
+        console.log("Inside the addAnotherQuestion");
+        await axios.post(
+          "http://localhost:5000/api/interviews/addAnotherQuestion",
+          { question: response.data.question, role }
+        );
+      } else {
+        setCount(count + 1);
+        console.log("Inside the addConversationHistory");
+        await axios.post(
+          "http://localhost:5000/api/interviews/addQuestionToConversationHistory",
+          { question: response.data.question }
+        );
+      }
+
+      setChatMessages([
+        `Interviewer: Hey! Can you explain your approach to solving the question for the role: ${role}?`,
+      ]);
+    } catch (error) {
+      console.error("Error generating main question:", error);
+    } finally {
+      isRequestInProgress = false;
+    }
+  };
+
+  // Handle moving to the next role
+  const handleNextQuestion = async () => {
+    if (isTransitioning) return; // Prevent double-triggering
+    setIsTransitioning(true);
+
+    if (currentRoleIndex < roles.length - 1) {
+      const nextRole = roles[currentRoleIndex + 1];
+      setCurrentRoleIndex((prevIndex) => prevIndex + 1);
+      setTimeLeft(mainTimer / roles.length); // Reset timer for the next role
+      await generateMainQuestion(nextRole);
+    } else {
+      // All roles completed
+      alert("Interview completed!");
+      handleExitInterview();
+    }
+
+    setIsTransitioning(false);
+  };
+
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        handleExitInterview();
+      }
+    };
+
+    if (isInterviewStarted && timeLeft !== null) {
+      if (timerRef.current) clearInterval(timerRef.current);
+
+      timerRef.current = setInterval(() => {
+        setTimeLeft((prevTime) => {
+          if (prevTime <= 1) {
+            handleNextQuestion();
+            return mainTimer / roles.length;
+          }
+          return prevTime - 3;
+        });
+        console.log("timeLeft");
+        if (timeLeft > 0) {
+          captureAndVerifyScreenshot();
+        }
+      }, 3000);
+
+      document.addEventListener("fullscreenchange", onFullscreenChange);
+
+      return () => {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        document.removeEventListener("fullscreenchange", onFullscreenChange);
+      };
+    }
+  }, [isInterviewStarted, mainTimer, roles.length]);
+  //irrelevant for now
+
+  const toggleWhiteboard = () => {
+    setIsWhiteboardExpanded((prev) => !prev);
+  };
+
+  const captureAndVerifyScreenshot = async () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext("2d");
+      context.drawImage(
+        videoRef.current,
+        0,
+        0,
+        canvasRef.current.width,
+        canvasRef.current.height
+      );
+
+      const imageBase64 = canvasRef.current.toDataURL("image/png");
+      const intervieweeUsername = localStorage.getItem("intervieweeUsername");
+
+      try {
+        const response = await axios.post(
+          "http://localhost:5000/api/interviews/verify",
+          {
+            username: intervieweeUsername,
+            image: imageBase64.replace(/^data:image\/[a-z]+;base64,/, ""),
+          }
+        );
+
+        if (!response.data.verified) {
+          setDefaulterCount((prevCount) => {
+            const newCount = prevCount + 1;
+            if (newCount >= 3) {
+              showModal(
+                "Verification failed: Please make sure you are the authorized user."
+              );
+              return 0; // Reset counter after showing the modal
+            }
+            return newCount;
+          });
+
+          // If modal has been displayed 4 times, exit the interview
+          setModalDisplayCount((prevModalCount) => {
+            const newModalCount = prevModalCount + 1;
+            if (newModalCount >= 25) {
+              exitInterview(); // Exit the interview after 4 modal displays
+              return 0; // Reset the counter after exiting
+            }
+            return newModalCount;
+          });
+        } else {
+          console.log("Verification passed");
+          setDefaulterCount(0); // Reset the counter on successful verification
+        }
+      } catch (error) {
+        console.error("Error verifying image:", error);
+      }
+    }
+  };
 
   // Function to exit the interview
   const exitInterview = () => {
@@ -27,17 +215,6 @@ const InterviewPage = () => {
       "You have been removed from the interview due to multiple failed verifications."
     );
     handleExitInterview();
-  };
-
-  // Show custom modal
-  const showModal = (message) => {
-    setModalMessage(message);
-    setIsModalVisible(true);
-  };
-
-  // Hide custom modal
-  const hideModal = () => {
-    setIsModalVisible(false);
   };
 
   // Clipboard Restriction
@@ -108,135 +285,15 @@ const InterviewPage = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchInterviewAndTestDetails = async () => {
-      try {
-        const interviewResponse = await axios.get(
-          `http://localhost:5000/api/interviews/get/${interviewId}`
-        );
-        const { testId } = interviewResponse.data;
-
-        const testResponse = await axios.get(
-          `http://localhost:5000/api/tests/getTest/${testId}`
-        );
-        const { time, subject, difficultyLevel, subTopic } = testResponse.data;
-
-        setTimeLeft(time * 60);
-
-        const questionResponse = await axios.post(
-          "http://localhost:5000/api/interviews/generateQuestion",
-          { subject, difficultyLevel, subTopic }
-        );
-
-        setQuestion(questionResponse.data.question);
-        await axios.post(
-          "http://localhost:5000/api/interviews/addQuestionToConversationHistory",
-          { question: questionResponse.data.question }
-        );
-        // Add initial chat message from the interviewer
-        setChatMessages([
-          `Interviewer: Hey! Can you explain your approach to solving the given question?`,
-        ]);
-      } catch (error) {
-        console.error("Error fetching interview or test data:", error);
-        navigate("/interview-ended");
-      }
-    };
-
-    fetchInterviewAndTestDetails();
-  }, [interviewId, navigate]);
-
-  useEffect(() => {
-    const onFullscreenChange = () => {
-      if (!document.fullscreenElement) {
-        handleExitInterview();
-      }
-    };
-
-    if (isInterviewStarted && timeLeft !== null) {
-      const timer = setInterval(() => {
-        setTimeLeft((prevTime) => {
-          if (prevTime <= 1) {
-            handleExitInterview();
-            return 0;
-          }
-          return prevTime - 3;
-        });
-        console.log("timeLeft");
-        captureAndVerifyScreenshot();
-      }, 3000);
-
-      document.addEventListener("fullscreenchange", onFullscreenChange);
-
-      // Capture screenshot every 3 seconds
-      const captureInterval = setInterval(() => {
-        console.log("capturing screenshot...");
-      }, 3000);
-
-      return () => {
-        clearInterval(timer);
-        clearInterval(captureInterval);
-        document.removeEventListener("fullscreenchange", onFullscreenChange);
-      };
-    }
-  }, [isInterviewStarted, timeLeft]);
-
-  const toggleWhiteboard = () => {
-    setIsWhiteboardExpanded((prev) => !prev);
+  // Show custom modal
+  const showModal = (message) => {
+    setModalMessage(message);
+    setIsModalVisible(true);
   };
 
-  const captureAndVerifyScreenshot = async () => {
-    if (videoRef.current && canvasRef.current) {
-      const context = canvasRef.current.getContext("2d");
-      context.drawImage(
-        videoRef.current,
-        0,
-        0,
-        canvasRef.current.width,
-        canvasRef.current.height
-      );
-
-      const imageBase64 = canvasRef.current.toDataURL("image/png");
-      const intervieweeUsername = localStorage.getItem("intervieweeUsername");
-
-      try {
-        const response = await axios.post(
-          "http://localhost:5000/api/interviews/verify",
-          {
-            username: intervieweeUsername,
-            image: imageBase64.replace(/^data:image\/[a-z]+;base64,/, ""),
-          }
-        );
-
-        if (!response.data.verified) {
-          setDefaulterCount((prevCount) => {
-            const newCount = prevCount + 1;
-            if (newCount >= 3) {
-              showModal(
-                "Verification failed: Please make sure you are the authorized user."
-              );
-              return 0; // Reset counter after showing the modal
-            }
-            return newCount;
-          });
-
-          // If modal has been displayed 4 times, exit the interview
-          setModalDisplayCount((prevModalCount) => {
-            const newModalCount = prevModalCount + 1;
-            if (newModalCount >= 12) {
-              exitInterview(); // Exit the interview after 4 modal displays
-              return 0; // Reset the counter after exiting
-            }
-            return newModalCount;
-          });
-        } else {
-          console.log("Verification passed");
-          setDefaulterCount(0); // Reset the counter on successful verification
-        }
-      } catch (error) {
-        console.error("Error verifying image:", error);
-      }
-    }
+  // Hide custom modal
+  const hideModal = () => {
+    setIsModalVisible(false);
   };
 
   // Modal for verification failure
@@ -314,6 +371,12 @@ const InterviewPage = () => {
         >
           <h2>Question</h2>
           <p>{question}</p>
+          <button
+            onClick={handleNextQuestion}
+            disabled={currentRoleIndex >= roles.length - 1}
+          >
+            Next Question
+          </button>
         </div>
         <div style={{ flex: 1, padding: "1rem", border: "1px solid #ddd" }}>
           <h2>Coding Area</h2>

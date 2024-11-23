@@ -20,40 +20,116 @@ const IntervieweeTests = () => {
     fetchTests();
   }, [intervieweeUsername]);
 
+  const handleStartTest = (testId) => {
+    // Redirect interviewee to the test-taking interface
+    window.location.href = `/tests/${testId}/preview`;
+  };
+
   return (
-    <div className="interviewee-tests">
-      <h2>Your Tests</h2>
+    <div
+      className="interviewee-tests"
+      style={{
+        width: "60%",
+        margin: "40px auto",
+        padding: "20px",
+        backgroundColor: "#f8f9fa",
+        border: "1px solid #ddd",
+        borderRadius: "8px",
+        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      <h2
+        style={{
+          textAlign: "center",
+          marginBottom: "20px",
+          color: "#333",
+        }}
+      >
+        Your Tests
+      </h2>
+
       {tests.length > 0 ? (
-        <ul>
+        <ul style={{ listStyle: "none", padding: 0 }}>
           {tests.map(({ test, completed, resultPDF }) => (
-            <li key={test._id} className="test-item">
-              <span>
-                {test.subject} - {test.subTopic}
+            <li
+              key={test._id}
+              className="test-item"
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "10px",
+                marginBottom: "10px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                backgroundColor: "#fff",
+              }}
+            >
+              <span
+                style={{
+                  color: "#333",
+                  fontSize: "16px",
+                }}
+              >
+                {test.interviewType} - Time: {test.time} minutes
               </span>
               {completed ? (
                 resultPDF ? (
-                  <a href={resultPDF} target="_blank" rel="noopener noreferrer">
-                    Completed
+                  <a
+                    href={resultPDF}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: "green",
+                      textDecoration: "underline",
+                      cursor: "pointer",
+                    }}
+                  >
+                    View Results
                   </a>
                 ) : (
-                  <span>Completed</span>
+                  <span
+                    style={{
+                      color: "#666",
+                      fontSize: "14px",
+                    }}
+                  >
+                    Completed
+                  </span>
                 )
               ) : (
-                <button onClick={() => handleStartTest(test._id)}>Start</button>
+                <button
+                  onClick={() => handleStartTest(test._id)}
+                  style={{
+                    padding: "8px 12px",
+                    fontSize: "14px",
+                    backgroundColor: "#007bff",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Start
+                </button>
               )}
             </li>
           ))}
         </ul>
       ) : (
-        <p>No tests found.</p>
+        <p
+          style={{
+            textAlign: "center",
+            color: "#666",
+            fontSize: "16px",
+          }}
+        >
+          No tests found.
+        </p>
       )}
     </div>
   );
-};
-
-const handleStartTest = (testId) => {
-  // Redirect interviewee to the test-taking interface
-  window.location.href = `/tests/${testId}/preview`;
 };
 
 export default IntervieweeTests;

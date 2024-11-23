@@ -9,6 +9,9 @@ import {
   submitInterview,
   verify,
   clearChat,
+  generateQuestionsForRoles,
+  resetConversationForRole,
+  addAnotherQuestion,
 } from "../controllers/interviewController.js";
 const router = express.Router();
 
@@ -23,4 +26,7 @@ router.post(
 router.post("/submitInterview", submitInterview);
 router.post("/verify", verify);
 router.get("/clearChat", clearChat);
+router.post("/generateQuestionsForRoles", generateQuestionsForRoles);
+router.post("/resetConversationForRole", resetConversationForRole);
+router.post("/addAnotherQuestion", addAnotherQuestion);
 export default router;

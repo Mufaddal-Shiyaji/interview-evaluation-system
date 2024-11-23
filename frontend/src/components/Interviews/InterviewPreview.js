@@ -149,44 +149,143 @@ const SystemCheck = () => {
   }, []);
 
   return (
-    <div className="system-check-container">
-      <h2>System Check and Terms & Conditions</h2>
-      <p>Please allow camera and microphone access to proceed.</p>
-      <p>
+    <div
+      className="system-check-container"
+      style={{
+        width: "70%",
+        margin: "40px auto",
+        padding: "20px",
+        backgroundColor: "#f8f9fa",
+        border: "1px solid #ddd",
+        borderRadius: "8px",
+        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      <h2
+        style={{
+          textAlign: "center",
+          marginBottom: "20px",
+          color: "#333",
+        }}
+      >
+        System Check and Terms & Conditions
+      </h2>
+
+      <p
+        style={{
+          fontSize: "16px",
+          marginBottom: "10px",
+          color: "#555",
+        }}
+      >
+        Please allow camera and microphone access to proceed.
+      </p>
+      <p
+        style={{
+          fontSize: "16px",
+          marginBottom: "20px",
+          color: "#555",
+        }}
+      >
         Read and accept the terms and conditions below to start the interview.
       </p>
 
       {/* Video Preview Box */}
-      <div className="video-preview">
+      <div
+        className="video-preview"
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          marginBottom: "20px",
+        }}
+      >
         <video
           ref={videoRef}
           autoPlay
           muted
-          style={{ width: "300px", height: "200px" }}
+          style={{
+            width: "300px",
+            height: "200px",
+            border: "2px solid #ccc",
+            borderRadius: "8px",
+          }}
         ></video>
       </div>
 
       {/* Audio Waveform */}
-      <div className="audio-waveform">
-        <canvas ref={canvasRef} width={300} height={100}></canvas>
+      <div
+        className="audio-waveform"
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          marginBottom: "20px",
+        }}
+      >
+        <canvas
+          ref={canvasRef}
+          width={300}
+          height={100}
+          style={{
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+          }}
+        ></canvas>
       </div>
 
       {/* Verify Yourself Button */}
-      <button onClick={handleVerifyYourself} disabled={!permissionsGranted}>
+      <button
+        onClick={handleVerifyYourself}
+        disabled={!permissionsGranted}
+        style={{
+          display: "block",
+          width: "200px",
+          margin: "0 auto 20px auto",
+          padding: "10px 20px",
+          backgroundColor: permissionsGranted ? "#007bff" : "#ccc",
+          color: "#fff",
+          border: "none",
+          borderRadius: "4px",
+          cursor: permissionsGranted ? "pointer" : "not-allowed",
+        }}
+      >
         Verify Yourself
       </button>
 
       {/* Terms and Conditions Box */}
-      <div className="terms-box">
-        <p>
+      <div
+        className="terms-box"
+        style={{
+          padding: "10px",
+          backgroundColor: "#fff",
+          border: "1px solid #ccc",
+          borderRadius: "4px",
+          marginBottom: "20px",
+        }}
+      >
+        <p
+          style={{
+            fontSize: "14px",
+            color: "#555",
+            marginBottom: "10px",
+          }}
+        >
           [-Whiteboard for rough work -Don't use notebooks or phone -Strict
           monitoring -Any suspicious activity will be flagged]
         </p>
-        <label>
+        <label
+          style={{
+            fontSize: "14px",
+            color: "#333",
+          }}
+        >
           <input
             type="checkbox"
             checked={termsAccepted}
             onChange={handleTermsCheckbox}
+            style={{
+              marginRight: "8px",
+            }}
           />
           I agree to the terms and conditions.
         </label>
@@ -196,6 +295,23 @@ const SystemCheck = () => {
       <button
         onClick={handleSubmit}
         disabled={!(termsAccepted && permissionsGranted && verificationSuccess)}
+        style={{
+          display: "block",
+          width: "200px",
+          margin: "0 auto",
+          padding: "10px 20px",
+          backgroundColor:
+            termsAccepted && permissionsGranted && verificationSuccess
+              ? "#28a745"
+              : "#ccc",
+          color: "#fff",
+          border: "none",
+          borderRadius: "4px",
+          cursor:
+            termsAccepted && permissionsGranted && verificationSuccess
+              ? "pointer"
+              : "not-allowed",
+        }}
       >
         Start Interview
       </button>

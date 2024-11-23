@@ -1,27 +1,51 @@
-Based on this interview conversation history, evaluate the candidate's performance on the following parameters:
+These is/are the roles for this interview.
 
-Technical Skill: Rate out of 10
-Communication: Rate out of 10
-Problem Solving: Rate out of 10
-Coding Efficiency: Rate out of 10
-Overall Score: Rate out of 10
-Generate a detailed, formal report with scores for each parameter and an explanation for each score. The report should conclude with a strong/weak/maybe hire recommendation based on the scores.
+(Important Note: All candidate responses have the role as 'user,' and interviewer responses have the role 'assistant.' So, consider the 'user' responses for the evaluation of questions asked by the 'assistant.')
 
-Output only the report in the following format, with no additional text, commentary, or preamble:
+Generate a Critical and Detailed Evaluation Report for the candidate based on their performance during the entire interview. The evaluation should strictly adhere to the following guidelines and criteria:
+(Consider the entire conversation history)
 
-Technical Skill: [Score]/10
-Explanation: [Explanation]
+Evaluation Guidelines
+Role-Specific Assessment:
+For each role, evaluate only those answers related to the role's primary question. Cross-reference the responses with the required skills and knowledge for that role.
 
-Communication: [Score]/10
-Explanation: [Explanation]
 
-Problem Solving: [Score]/10
-Explanation: [Explanation]
+Objective Metrics for Success Probability:
+Assign a success probability (in decimals between 0 and 100) for each role based on aggregate performance across evaluation criteria. The success probability must reflect strict adherence to scoring guidelines, ensuring that poor responses or incomplete answers proportionally reduce the score.
 
-Coding Efficiency: [Score]/10
-Explanation: [Explanation]
+Evaluation Criteria for Each Role
+Strengths: List specific areas where the candidate excelled. Use examples from responses where applicable.
+Weaknesses: Highlight deficiencies in responses, whether in accuracy, depth, or presentation. Provide actionable suggestions for improvement.
+Recommendation: Based on scores and evaluation, recommend if the candidate is suitable for the role. Include clear reasoning, referencing the interview performance.
 
-Overall Score: [Score]/10
-Explanation: [Explanation]
+Output Format:
+Role: Frontend Developer
+Strengths: [Detailed description of specific strengths.]
+Weaknesses: [Detailed description of weaknesses.]
+Recommendation: [Yes/No, with justification.]
 
-Recommendation: [No/Maybe No/Maybe Yes/Yes for Hiring]
+Role: Backend Developer
+Strengths: [Detailed description of specific strengths.]
+Weaknesses: [Detailed description of weaknesses.]
+Recommendation: [Yes/No, with justification.]
+
+Role: Data Scientist
+Strengths: [Detailed description of specific strengths.]
+Weaknesses: [Detailed description of weaknesses.]
+Recommendation: [Yes/No, with justification.]
+
+Final Recommendation:
+Probability of Success:
+
+Frontend Developer: [XX.xx]
+Backend Developer: [XX.xx]
+Data Scientist: [XX.xx]
+
+Verdict:
+Based on the evaluation, the candidate is best suited for the role of [Role]. The probability of success in this role is [XX.xx].
+The other roles are less suitable due to [specific reasons, such as insufficient technical skills, weak problem-solving abilities, etc.].
+
+Additional Notes:
+Tailor the evaluation to include specific examples from the candidate’s responses wherever possible.
+The report must reflect critical yet professional feedback to ensure the evaluation accurately assesses suitability for each role.
+Ensure strict scoring, especially for weak or incomplete responses.

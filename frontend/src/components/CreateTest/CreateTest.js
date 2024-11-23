@@ -3,20 +3,41 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 const CreateTest = () => {
+  const [interviewType, setInterviewType] = useState(""); // Stores the selected interview types
+  const [selectedInterviewTypes, setSelectedInterviewTypes] = useState([]);
   const [testDetails, setTestDetails] = useState({
-    subject: "",
-    difficultyLevel: "",
-    subTopic: "",
     time: "",
     specificRequirements: "",
   });
 
   const [studentUsernames, setStudentUsernames] = useState([]);
   const [currentUsername, setCurrentUsername] = useState("");
+  const [isGeneral, setIsGeneral] = useState(true); // Tracks whether "General" or "Specific" is selected
+
   const navigate = useNavigate();
 
-  const handleInputChange = (e) => {
+  const handleTestDetailsChange = (e) => {
     setTestDetails({ ...testDetails, [e.target.name]: e.target.value });
+  };
+
+  const handleOptionTypeChange = (type) => {
+    setIsGeneral(type === "general");
+    setSelectedInterviewTypes([]);
+    setInterviewType("");
+  };
+
+  const handleTypeSelection = (type) => {
+    if (isGeneral) {
+      if (selectedInterviewTypes.includes(type)) {
+        setSelectedInterviewTypes(
+          selectedInterviewTypes.filter((t) => t !== type)
+        );
+      } else if (selectedInterviewTypes.length < 3) {
+        setSelectedInterviewTypes([...selectedInterviewTypes, type]);
+      }
+    } else {
+      setSelectedInterviewTypes([type]);
+    }
   };
 
   const handleUsernameSubmit = () => {
@@ -27,10 +48,9 @@ const CreateTest = () => {
   };
 
   const handleUsernameDelete = (usernameToDelete) => {
-    const updatedUsernames = studentUsernames.filter(
-      (username) => username !== usernameToDelete
+    setStudentUsernames(
+      studentUsernames.filter((username) => username !== usernameToDelete)
     );
-    setStudentUsernames(updatedUsernames);
   };
 
   const interviewerUsername = localStorage.getItem("interviewerUsername");
@@ -38,10 +58,10 @@ const CreateTest = () => {
   const handleTestSubmit = async () => {
     try {
       const token = localStorage.getItem("token");
-      console.log(interviewerUsername);
       const response = await axios.post(
         `http://localhost:5000/api/tests/create/${interviewerUsername}`,
         {
+          interviewType: selectedInterviewTypes.join(", "),
           ...testDetails,
           studentUsernames,
           token,
@@ -56,55 +76,146 @@ const CreateTest = () => {
   };
 
   return (
-    <div className="create-test-container">
-      <h2>Create a New Test</h2>
+    <div
+      className="create-test-container"
+      style={{
+        width: "60%",
+        margin: "20px auto",
+        padding: "20px",
+        backgroundColor: "#f9f9f9",
+        border: "1px solid #ddd",
+        borderRadius: "8px",
+        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      <h2 style={{ textAlign: "center", marginBottom: "20px", color: "#333" }}>
+        Create a New Test
+      </h2>
 
-      {/* Subject */}
-      <div>
-        <label>Subject</label>
-        <select name="subject" onChange={handleInputChange}>
-          <option value="">Select Subject</option>
-          <option value="DSA">DSA</option>
-          <option value="DBMS">DBMS</option>
-          <option value="OS">OS</option>
-        </select>
-      </div>
-
-      {/* Difficulty Level */}
-      <div>
-        <label>Difficulty Level</label>
-        <select name="difficultyLevel" onChange={handleInputChange}>
-          <option value="">Select Difficulty</option>
-          <option value="Easy">Easy</option>
-          <option value="Medium">Medium</option>
-          <option value="Hard">Hard</option>
-        </select>
-      </div>
-
-      {/* Sub-Topic */}
-      <div>
-        <label>Sub-Topic</label>
-        <select
-          name="subTopic"
-          value={testDetails.subTopic}
-          onChange={handleInputChange}
+      {/* Interview Type Selection */}
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{
+            display: "block",
+            fontWeight: "bold",
+            marginBottom: "8px",
+            color: "#555",
+          }}
         >
-          <option value="">Select Sub-Topic</option>
-          <option value="Trees">Trees</option>
-          <option value="Graphs">Graphs</option>
-          <option value="Normalization">Normalization</option>
-          <option value="Concurrency">Concurrency</option>
-          {/* Add more sub-topic options as needed */}
-        </select>
+          Select Interview Type
+        </label>
+        <div>
+          <button
+            onClick={() => handleOptionTypeChange("general")}
+            style={{
+              cursor: "pointer",
+              padding: "8px 12px",
+              margin: "5px",
+              fontSize: "14px",
+              backgroundColor: "#007bff",
+              color: "#fff",
+              border: "none",
+              borderRadius: "4px",
+            }}
+          >
+            General
+          </button>
+          <button
+            onClick={() => handleOptionTypeChange("specific")}
+            style={{
+              cursor: "pointer",
+              padding: "8px 12px",
+              margin: "5px",
+              fontSize: "14px",
+              backgroundColor: "#007bff",
+              color: "#fff",
+              border: "none",
+              borderRadius: "4px",
+            }}
+          >
+            Specific
+          </button>
+        </div>
+      </div>
+
+      {/* Options for General or Specific Interview */}
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{
+            display: "block",
+            fontWeight: "bold",
+            marginBottom: "8px",
+            color: "#555",
+          }}
+        >
+          Select Interview Types
+        </label>
+        <div>
+          {[
+            "Frontend",
+            "Backend",
+            "Full Stack",
+            "Java Developer",
+            "Python Developer",
+            "Data Analyst",
+            "Data Scientist",
+          ].map((type) => (
+            <button
+              key={type}
+              onClick={() => handleTypeSelection(type)}
+              style={{
+                cursor: "pointer",
+                padding: "8px 12px",
+                margin: "5px",
+                fontSize: "14px",
+                backgroundColor: selectedInterviewTypes.includes(type)
+                  ? "lightgreen"
+                  : "lightgray",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                color: "#333",
+              }}
+              disabled={
+                !isGeneral &&
+                selectedInterviewTypes.length >= 1 &&
+                !selectedInterviewTypes.includes(type)
+              }
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+        <p style={{ color: "#555", marginTop: "10px" }}>
+          {isGeneral
+            ? "You can select up to 3 types."
+            : "You can select only 1 type."}
+        </p>
       </div>
 
       {/* Time */}
-      <div>
-        <label>Time (minutes)</label>
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{
+            display: "block",
+            fontWeight: "bold",
+            marginBottom: "8px",
+            color: "#555",
+          }}
+        >
+          Time (minutes)
+        </label>
         <select
           name="time"
           value={testDetails.time}
-          onChange={handleInputChange}
+          onChange={handleTestDetailsChange}
+          style={{
+            width: "100%",
+            padding: "8px",
+            fontSize: "14px",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+          }}
         >
           <option value="">Select Time</option>
           <option value="30">30 minutes</option>
@@ -114,32 +225,97 @@ const CreateTest = () => {
       </div>
 
       {/* Specific Requirements */}
-      <div>
-        <label>Specific Requirements</label>
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{
+            display: "block",
+            fontWeight: "bold",
+            marginBottom: "8px",
+            color: "#555",
+          }}
+        >
+          Specific Requirements
+        </label>
         <textarea
           name="specificRequirements"
           value={testDetails.specificRequirements}
-          onChange={handleInputChange}
+          onChange={handleTestDetailsChange}
+          style={{
+            width: "100%",
+            padding: "8px",
+            fontSize: "14px",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+          }}
         />
       </div>
 
       {/* Add Student Usernames */}
-      <div>
-        <label>Enter Student Username</label>
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{
+            display: "block",
+            fontWeight: "bold",
+            marginBottom: "8px",
+            color: "#555",
+          }}
+        >
+          Enter Student Username
+        </label>
         <input
           type="text"
           value={currentUsername}
           onChange={(e) => setCurrentUsername(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "8px",
+            fontSize: "14px",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+            marginBottom: "10px",
+          }}
         />
-        <button onClick={handleUsernameSubmit}>Submit Username</button>
+        <button
+          onClick={handleUsernameSubmit}
+          style={{
+            cursor: "pointer",
+            padding: "8px 12px",
+            fontSize: "14px",
+            backgroundColor: "#007bff",
+            color: "#fff",
+            border: "none",
+            borderRadius: "4px",
+          }}
+        >
+          Submit Username
+        </button>
       </div>
 
       {/* Display added usernames with delete option */}
-      <ul>
+      <ul style={{ listStyleType: "none", padding: "0", marginBottom: "20px" }}>
         {studentUsernames.map((username, index) => (
-          <li key={index}>
-            {username}{" "}
-            <button onClick={() => handleUsernameDelete(username)}>
+          <li
+            key={index}
+            style={{
+              marginBottom: "8px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            {username}
+            <button
+              onClick={() => handleUsernameDelete(username)}
+              style={{
+                cursor: "pointer",
+                padding: "5px 10px",
+                fontSize: "12px",
+                backgroundColor: "#dc3545",
+                color: "#fff",
+                border: "none",
+                borderRadius: "4px",
+              }}
+            >
               Delete
             </button>
           </li>
@@ -147,9 +323,28 @@ const CreateTest = () => {
       </ul>
 
       {/* Publish Test Button */}
-      <button onClick={handleTestSubmit}>Publish Test</button>
+      <button
+        onClick={handleTestSubmit}
+        disabled={selectedInterviewTypes.length === 0}
+        style={{
+          width: "100%",
+          padding: "12px",
+          fontSize: "16px",
+          fontWeight: "bold",
+          backgroundColor:
+            selectedInterviewTypes.length === 0 ? "#6c757d" : "#28a745",
+          color: "#fff",
+          border: "none",
+          borderRadius: "6px",
+          cursor:
+            selectedInterviewTypes.length === 0 ? "not-allowed" : "pointer",
+        }}
+      >
+        Publish Test
+      </button>
     </div>
   );
 };
+x;
 
 export default CreateTest;
